@@ -1,4 +1,4 @@
-# Backend UTTEAM Stock Management System
+# Backend Stock Management System
 
 ## English
 
