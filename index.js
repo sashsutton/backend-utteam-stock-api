@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import axios from 'axios';
+import cron from 'node-cron';
 
 dotenv.config();
 
@@ -244,6 +245,54 @@ app.post("/api/product", async (req, res) => {
 
 });
 
+// Function to perform automatic stock update
+async function performAutomaticUpdate() {
+    try {
+        console.log('🕐 [AUTOMATIC] Starting scheduled stock update...');
+        
+        // Fetch data from external API
+        const products = await fetchAllUTTData();
+        
+        // Update Supabase
+        const result = await updateSupabaseStock(products);
+        
+        console.log('✅ [AUTOMATIC] Stock update completed successfully');
+        console.log(`📊 [AUTOMATIC] Summary: ${products.length} products, ${result.processed} processed, ${result.errors} errors`);
+        
+        return { success: true, summary: result };
+        
+    } catch (error) {
+        console.error('❌ [AUTOMATIC] Error in scheduled update:', error.message);
+        return { success: false, error: error.message };
+    }
+}
+
+// Schedule automatic stock update every hour
+const scheduleStockUpdate = () => {
+    // Run every hour at minute 0 (e.g., 1:00, 2:00, 3:00, etc.)
+    cron.schedule('0 * * * *', async () => {
+        await performAutomaticUpdate();
+    }, {
+        scheduled: true,
+        timezone: "Europe/Paris" // Adjust timezone as needed
+    });
+    
+    console.log('⏰ Scheduled automatic stock update every hour');
+};
+
+// Start the scheduled task
+scheduleStockUpdate();
+
+// Endpoint to check last update status
+app.get('/api/update-status', (req, res) => {
+    res.json({
+        scheduled: true,
+        schedule: 'Every hour at minute 0',
+        timezone: 'Europe/Paris',
+        nextUpdate: 'Next update will be at the top of the next hour'
+    });
+});
+
 // Global error handler
 app.use((error, req, res, next) => {
     console.error('Global error handler:', error);
@@ -281,5 +330,6 @@ app.listen(PORT, () => {
     console.log(`   GET  /api/product - Product API with filters`);
     console.log(`   POST /api/product - Product API with body parameters`);
     console.log(`   POST /api/update-stock - Update stock from external API`);
+    console.log(`   GET  /api/update-status - Check last update status`);
     console.log(`🔗 Access the application at: http://localhost:${PORT}`);
 });

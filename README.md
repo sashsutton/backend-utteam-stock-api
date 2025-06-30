@@ -12,6 +12,7 @@ This is a Node.js backend application for managing stock data for UTTEAM product
 - **Frontend Interface**: HTML-based interface for stock visualization
 - **Color-based Filtering**: Filter products by color with visual color palette
 - **Real-time Updates**: Automatic stock updates and data synchronization
+- **Scheduled Updates**: Automatic database updates every hour
 
 ### Tech Stack
 - **Backend**: Node.js, Express.js
@@ -98,6 +99,11 @@ This is a Node.js backend application for managing stock data for UTTEAM product
      }
      ```
 
+   **GET /api/update-status**
+   - Check the status of scheduled updates
+   - Returns information about the update schedule
+   - Example: `GET /api/update-status`
+
 ### Frontend Features
 - **Color Palette**: Visual color selection for filtering products
 - **Style-specific Display**: Currently configured for AWJH001 products
@@ -171,6 +177,7 @@ Ceci est une application backend Node.js pour la gestion des données de stock d
 - **Interface Frontend** : Interface HTML pour la visualisation des stocks
 - **Filtrage par Couleur** : Filtre les produits par couleur avec une palette de couleurs visuelle
 - **Mises à Jour en Temps Réel** : Mises à jour automatiques des stocks et synchronisation des données
+- **Mises à Jour Planifiées** : Mises à jour automatiques de la base de données toutes les heures
 
 ### Stack Technique
 - **Backend** : Node.js, Express.js
@@ -256,6 +263,11 @@ Ceci est une application backend Node.js pour la gestion des données de stock d
        "currency": "EUR"
      }
      ```
+
+   **GET /api/update-status**
+   - Vérifier le statut des mises à jour planifiées
+   - Retourner des informations sur le planning des mises à jour
+   - Exemple : `GET /api/update-status`
 
 ### Fonctionnalités Frontend
 - **Palette de Couleurs** : Sélection visuelle des couleurs pour filtrer les produits
