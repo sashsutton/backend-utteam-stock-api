@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vérificateur de Stock</title>
+    <style>
+        .stock-checker {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 20px auto;
+            padding: 20px;
+            border: 1px solid #e1e5e9;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: visible !important;
+        }
+        
+        .stock-checker h3 {
+            margin: 0 0 20px 0;
+            color: #333;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+            font-size: 14px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #007cba;
+            box-shadow: 0 0 0 2px rgba(0,124,186,0.2);
+        }
+        
+        .search-btn {
+            background: #007cba;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            width: 100%;
+            transition: background-color 0.2s;
+        }
+        
+        .search-btn:hover {
+            background: #005a87;
+        }
+        
+        .search-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .error {
+            color: #d63638;
+            background: #fef7f1;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        
+        .results-summary {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-size: 14px;
+        }
+        
+        .results-summary div {
+            margin-bottom: 8px;
+        }
+        
+        .results-summary strong {
+            color: #333;
+        }
+        
+        .stock-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 13px;
+        }
+        
+        .stock-table th {
+            background: #f8f9fa;
+            padding: 10px 8px;
+            text-align: left;
+            border-bottom: 2px solid #dee2e6;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .stock-table td {
+            padding: 8px;
+            border-bottom: 1px solid #dee2e6;
+            color: #555;
+        }
+        
+        .stock-table tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+        }
+        
+        #colorSwatches {
+            display: flex !important;
+            flex-wrap: wrap !important;
+            gap: 10px !important;
+            margin-bottom: 10px !important;
+            max-width: 100% !important;
+            justify-content: flex-start !important;
+            min-width: 0 !important;
+            min-height: 40px !important;
+            background: #fff !important;
+            position: relative !important;
+            z-index: 10 !important;
+        }
+        
+        .color-swatch {
+            flex: 0 0 32px !important;
+            width: 32px !important;
+            height: 32px !important;
+            border-radius: 50% !important;
+            border: 2px solid #ccc !important;
+            cursor: pointer !important;
+            box-sizing: border-box !important;
+            transition: border 0.2s !important;
+            display: inline-block !important;
+            background-clip: padding-box !important;
+        }
+        
+        @media (max-width: 768px) {
+            .stock-checker {
+                margin: 10px;
+                padding: 15px;
+            }
+            
+            .stock-table {
+                font-size: 12px;
+            }
+            
+            .stock-table th,
+            .stock-table td {
+                padding: 6px 4px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="stock-checker">
+        <h3>Vérifier la Disponibilité du Stock</h3>
+        
+        <form id="stockForm">
+            <input type="hidden" id="style" name="style" value="AWJH050">
+            <div class="form-group">
+                <label>Couleur :</label>
+                <div id="colorSwatches"></div>
+                <input type="hidden" id="color" name="color">
+                <div id="selectedColorLabel" style="margin-top: 5px; color: #333; font-size: 14px;"></div>
+            </div>
+        </form>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="loading" class="loading" style="display: none;">
+            Chargement des informations de stock...
+        </div>
+        
+        <div id="results" style="display: none;">
+            <div id="summary" class="results-summary"></div>
+            <div id="tableContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        // API URL for the deployed backend
+        const API_BASE_URL = 'http://localhost:3002/api/product';
+        
+        // Color swatch data (name and hex)
+        const COLORS = [
+    { display: "Ash", value: "Ash", hex: "#B8B8B8" },
+    { display: "Baby Pink", value: "Baby Pink", hex: "#F4C2C2" },
+    { display: "Black Smoke", value: "Black Smoke", hex: "#3E3E3E" },
+    { display: "Deep Black", value: "Deep Black", hex: "#000000" },
+    { display: "Dusty Pink", value: "Dusty Pink", hex: "#D8A8A8" },
+    { display: "Jet Black", value: "Jet Black", hex: "#333333" },
+    { display: "Red Rust", value: "Red Rust", hex: "#8C2F2F" },
+    { display: "Soft Red", value: "Soft Red", hex: "#D17C7C" },
+    { display: "Hot Chocolate", value: "Hot Chocolate", hex: "#683B39" },
+    { display: "Sunset Orange", value: "Sunset Orange", hex: "#FD5E53" },
+    { display: "Dusty Rose", value: "Dusty Rose", hex: "#C9A9A6" },
+    { display: "Fire Red", value: "Fire Red", hex: "#FF3300" },
+    { display: "Light Orange", value: "Light Orange", hex: "#FFA87D" },
+    { display: "Burnt Orange", value: "Burnt Orange", hex: "#CC5500" },
+    { display: "Desert Sand", value: "Desert Sand", hex: "#EDC9AF" },
+    { display: "Ginger Biscuit", value: "Ginger Biscuit", hex: "#B38B6D" },
+    { display: "Natural Clay", value: "Natural Clay", hex: "#C08E66" },
+    { display: "Caramel Toffee", value: "Caramel Toffee", hex: "#C38F64" },
+    { display: "Mocha Brown", value: "Mocha Brown", hex: "#826D5B" },
+    { display: "Nude", value: "Nude", hex: "#E3BC9A" },
+    { display: "Orange Crush", value: "Orange Crush", hex: "#FF7F00" },
+    { display: "Natural Stone", value: "Natural Stone", hex: "#A39281" },
+    { display: "Caramel Latte", value: "Caramel Latte", hex: "#C5A582" },
+    { display: "Pumpkin Pie", value: "Pumpkin Pie", hex: "#E98A15" },
+    { display: "Khaki", value: "Khaki", hex: "#C3B091" },
+    { display: "Peach Perfect", value: "Peach Perfect", hex: "#FBE7C6" },
+    { display: "Mustard", value: "Mustard", hex: "#FFDB58" },
+    { display: "Vanilla Milkshake", value: "Vanilla Milkshake", hex: "#F3E5AB" },
+    { display: "Pina Colada", value: "Pina Colada", hex: "#F4E8B1" },
+    { display: "Gold", value: "Gold", hex: "#FFD700" },
+    { display: "Sun Yellow", value: "Sun Yellow", hex: "#FFDF00" },
+    { display: "Sherbet Lemon", value: "Sherbet Lemon", hex: "#B7C526" },
+    { display: "Citrus", value: "Citrus", hex: "#9ACD32" },
+    { display: "Lime Green", value: "Lime Green", hex: "#32CD32" },
+    { display: "Apple Green", value: "Apple Green", hex: "#8DB600" },
+    { display: "Cactus Green", value: "Cactus Green", hex: "#587156" },
+    { display: "Combat Green", value: "Combat Green", hex: "#5E7F68" },
+    { display: "Moss Green", value: "Moss Green", hex: "#8A9A5B" },
+    { display: "Earthy Green", value: "Earthy Green", hex: "#6B8C42" },
+    { display: "Forest Green", value: "Forest Green", hex: "#228B22" },
+    { display: "Rainforest Green", value: "Rainforest Green", hex: "#006400" },
+    { display: "Olive Green", value: "Olive Green", hex: "#808000" },
+    { display: "Pistachio Green", value: "Pistachio Green", hex: "#93C572" },
+    { display: "Alien Green", value: "Alien Green", hex: "#00CC66" },
+    { display: "Spring Green", value: "Spring Green", hex: "#00FF7F" },
+    { display: "Seafoam", value: "Seafoam", hex: "#9FE2BF" },
+    { display: "Lagoon Blue", value: "Lagoon Blue", hex: "#008496" },
+    { display: "Tropical Blue", value: "Tropical Blue", hex: "#007592" },
+    { display: "Deep Sea Blue", value: "Deep Sea Blue", hex: "#1E4F79" },
+    { display: "Denim Blue", value: "Denim Blue", hex: "#6F8FAF" },
+    { display: "Dusty Blue", value: "Dusty Blue", hex: "#7A9CC6" },
+    { display: "Hawaiian Blue", value: "Hawaiian Blue", hex: "#0088CC" },
+    { display: "Atlantic Blue", value: "Atlantic Blue", hex: "#3D8E95" },
+    { display: "Steel Grey", value: "Steel Grey", hex: "#71797E" },
+    { display: "Storm Grey", value: "Storm Grey", hex: "#74787C" },
+    { display: "Shark Grey", value: "Shark Grey", hex: "#4B5864" },
+    { display: "Charcoal", value: "Charcoal", hex: "#36454F" },
+    { display: "Heather Grey", value: "Heather Grey", hex: "#B6B6B4" },
+    { display: "Platinum Grey", value: "Platinum Grey", hex: "#91989F" },
+    { display: "Airforce Blue", value: "Airforce Blue", hex: "#5D8AA8" },
+    { display: "Arctic White", value: "Arctic White", hex: "#F5F9FA" },
+    { display: "Ice Blue", value: "Ice Blue", hex: "#99CCFF" },
+    { display: "Sky Blue", value: "Sky Blue", hex: "#87CEEB" },
+    { display: "Cornflower Blue", value: "Cornflower Blue", hex: "#6495ED" },
+    { display: "Sapphire Blue", value: "Sapphire Blue", hex: "#0F52BA" },
+    { display: "Royal Blue", value: "Royal Blue", hex: "#4169E1" },
+    { display: "New French Navy", value: "New French Navy", hex: "#0047AB" },
+    { display: "Oxford Navy", value: "Oxford Navy", hex: "#002147" },
+    { display: "Ink Blue", value: "Ink Blue", hex: "#003366" },
+    { display: "Bright Royal", value: "Bright Royal", hex: "#0062FF" },
+    { display: "Navy Smoke", value: "Navy Smoke", hex: "#4E5564" },
+    { display: "Moondust Grey", value: "Moondust Grey", hex: "#A8A9AD" },
+    { display: "Digital Lavender", value: "Digital Lavender", hex: "#9999C0" },
+    { display: "Lavender", value: "Lavender", hex: "#E6E6FA" },
+    { display: "Ultra Violet", value: "Ultra Violet", hex: "#64549E" },
+    { display: "True Violet", value: "True Violet", hex: "#8F6ED5" },
+    { display: "Festival Fuchsia", value: "Festival Fuchsia", hex: "#B65FCF" },
+    { display: "Candyfloss Pink", value: "Candyfloss Pink", hex: "#FF99FF" },
+    { display: "Dusty Lilac", value: "Dusty Lilac", hex: "#C0A8C0" },
+    { display: "Graphite Heather", value: "Graphite Heather", hex: "#4D4B4D" },
+    { display: "Lilac", value: "Lilac", hex: "#C8A2C8" },
+    { display: "Magenta Magic", value: "Magenta Magic", hex: "#FF00FF" },
+    { display: "Purple", value: "Purple", hex: "#800080" },
+    { display: "Plum", value: "Plum", hex: "#8E4585" },
+    { display: "Dusty Purple", value: "Dusty Purple", hex: "#8A6F80" },
+    { display: "Lipstick Pink", value: "Lipstick Pink", hex: "#FF22AA" },
+    { display: "Pinky Purple", value: "Pinky Purple", hex: "#D18FB2" },
+    { display: "Hot Pink", value: "Hot Pink", hex: "#FF69B4" },
+    { display: "Cranberry", value: "Cranberry", hex: "#9E003A" },
+    { display: "Burgundy", value: "Burgundy", hex: "#800020" },
+    { display: "Brick Red", value: "Brick Red", hex: "#CB4154" },
+    { display: "Chocolate Fudge Brownie", value: "Chocolate Fudge Brownie", hex: "#612E35" },
+    { display: "Burgundy Smoke", value: "Burgundy Smoke", hex: "#722F37" },
+    { display: "Wild Mulberry", value: "Wild Mulberry", hex: "#7F4E52" },
+    { display: "Red Hot Chilli", value: "Red Hot Chilli", hex: "#E22027" }
+];
+
+
+        
+        // Render color swatches
+        function renderColorSwatches() {
+            const swatchContainer = document.getElementById('colorSwatches');
+            swatchContainer.innerHTML = '';
+            COLORS.forEach((color, idx) => {
+                const swatch = document.createElement('div');
+                swatch.className = 'color-swatch';
+                swatch.title = color.display;
+                swatch.style.background = color.hex;
+                swatch.style.width = '32px';
+                swatch.style.height = '32px';
+                swatch.style.borderRadius = '50%';
+                swatch.style.border = '2px solid #ccc';
+                swatch.style.cursor = 'pointer';
+                swatch.style.boxSizing = 'border-box';
+                swatch.style.transition = 'border 0.2s';
+                swatch.setAttribute('data-color', color.value);
+                swatch.addEventListener('click', function() {
+                    selectColor(color.value, color.display, idx);
+                });
+                swatchContainer.appendChild(swatch);
+            });
+        }
+        
+        // Relance la requête automatiquement à chaque sélection de couleur, avec intervalle de 5s
+        let canSend = true;
+        function selectColor(colorValue, colorDisplay, idx) {
+            const swatches = document.querySelectorAll('.color-swatch');
+            swatches.forEach((swatch, i) => {
+                swatch.style.border = (i === idx) ? '3px solid #222' : '2px solid #ccc';
+            });
+            document.getElementById('color').value = colorValue;
+            document.getElementById('selectedColorLabel').textContent = colorValue ? `Couleur sélectionnée : ${colorDisplay}` : '';
+            if (canSend) {
+                submitStockForm();
+            }
+        }
+        
+        function setSwatchesEnabled(enabled) {
+            const swatches = document.querySelectorAll('.color-swatch');
+            swatches.forEach(swatch => {
+                swatch.style.pointerEvents = enabled ? 'auto' : 'none';
+                swatch.style.opacity = enabled ? '1' : '0.5';
+            });
+        }
+        
+        function submitStockForm() {
+            const color = document.getElementById('color').value;
+            if (!color) {
+                showError('Veuillez sélectionner une couleur');
+                return;
+            }
+            
+            canSend = false;
+            setSwatchesEnabled(false);
+            showLoading();
+            
+            const url = `${API_BASE_URL}?table=utteam-stock&attribute=color&value=${encodeURIComponent(color)}`;
+            
+            fetch(url, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('Échec de la récupération des données de stock');
+                return response.json();
+            })
+            .then(data => {
+                // Filtrer pour ne garder que AWJH050
+                const filteredData = data.filter(item => item.style === 'AWJH050');
+                displayResults(filteredData);
+            })
+            .catch(error => {
+                console.error('Erreur:', error);
+                showError('Erreur lors de la récupération des données');
+            })
+            .finally(() => {
+                hideLoading();
+                setSwatchesEnabled(true);
+                canSend = true;
+            });
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            renderColorSwatches();
+            // Sélectionne la première couleur réelle par défaut
+            selectColor(COLORS[0].value, COLORS[0].display, 0);
+        });
+        
+        function groupCount(arr, key) {
+            return arr.reduce((acc, item) => {
+                const k = item[key];
+                if (!k) return acc;
+                acc[k] = (acc[k] || 0) + 1;
+                return acc;
+            }, {});
+        }
+        
+        function sumField(arr, key) {
+            return arr.reduce((sum, item) => sum + (Number(item[key]) || 0), 0);
+        }
+        
+        function formatPrice(price) {
+            if (isNaN(Number(price))) return 'N/A';
+            return `€${Number(price).toFixed(2)}`;
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('error').style.display = 'none';
+        }
+        
+        function showLoading() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            hideError();
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading').style.display = 'none';
+        }
+        
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            const summaryDiv = document.getElementById('summary');
+            const tableContainer = document.getElementById('tableContainer');
+            
+            if (!data || data.length === 0) {
+                tableContainer.innerHTML = '<div class="no-results">Aucun stock trouvé pour les critères spécifiés.</div>';
+                resultsDiv.style.display = 'block';
+                return;
+            }
+
+            // Grouper par style
+            const groupedByStyle = {};
+            data.forEach(item => {
+                if (!groupedByStyle[item.style]) {
+                    groupedByStyle[item.style] = [];
+                }
+                groupedByStyle[item.style].push(item);
+            });
+
+            // Afficher le résumé
+            const totalUTTStock = sumField(data, 'uttstock');
+            const selectedColor = document.getElementById('color').value;
+            
+            summaryDiv.innerHTML = `
+                <div><strong>Couleur sélectionnée:</strong> ${selectedColor}</div>
+                <div><strong>Stock total UTT:</strong> ${totalUTTStock}</div>
+            `;
+
+            // Créer le tableau avec une ligne par style
+            tableContainer.innerHTML = '';
+            
+            const table = document.createElement('table');
+            table.className = 'stock-table';
+            
+            // Obtenir toutes les tailles uniques pour les en-têtes
+            const allSizes = new Set();
+            data.forEach(item => {
+                if (item.size) allSizes.add(item.size);
+            });
+            
+            // Ordre logique des tailles
+            const sizeOrder = ["XS", "S", "M", "L", "XL", "XXL", "2XL", "3XL", "4XL", "5XL"];
+            const sortedSizes = Array.from(allSizes).sort((a, b) => {
+                const ia = sizeOrder.indexOf(a);
+                const ib = sizeOrder.indexOf(b);
+                if (ia === -1 && ib === -1) return a.localeCompare(b);
+                if (ia === -1) return 1;
+                if (ib === -1) return -1;
+                return ia - ib;
+            });
+
+            // Créer l'en-tête du tableau
+            let tableHTML = `
+                <thead>
+                    <tr>
+                        <th>Style</th>
+                        ${sortedSizes.map(size => `<th>${size}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+
+            // Créer une ligne pour chaque style
+            Object.keys(groupedByStyle).forEach(style => {
+                const styleItems = groupedByStyle[style];
+                const sizeStock = {};
+                
+                // Organiser les stocks par taille pour ce style
+                styleItems.forEach(item => {
+                    if (item.size) {
+                        sizeStock[item.size] = item.uttstock || 0;
+                    }
+                });
+
+                tableHTML += `
+                    <tr>
+                        <td><strong>${style}</strong></td>
+                        ${sortedSizes.map(size => `<td>${sizeStock[size] || '-'}</td>`).join('')}
+                    </tr>
+                `;
+            });
+
+            tableHTML += '</tbody>';
+            table.innerHTML = tableHTML;
+            tableContainer.appendChild(table);
+            resultsDiv.style.display = 'block';
+        }
+    </script>
+</body>
+</html> 

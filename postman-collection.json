@@ -1,0 +1,92 @@
+{
+  "info": {
+    "name": "UTTEAM Stock API",
+    "description": "Collection for testing UTTEAM Stock Management API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        }
+      }
+    },
+    {
+      "name": "Get Products by Color (GET)",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/product?table=utteam-stock&attribute=color&value=Royal%20Blue",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "product"],
+          "query": [
+            {
+              "key": "table",
+              "value": "utteam-stock"
+            },
+            {
+              "key": "attribute",
+              "value": "color"
+            },
+            {
+              "key": "value",
+              "value": "Royal Blue"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Get Products by Color (POST)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"table\": \"utteam-stock\",\n  \"attribute\": \"color\",\n  \"value\": \"Royal Blue\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/product",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "product"]
+        }
+      }
+    },
+    {
+      "name": "Update Stock",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/update-stock",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "update-stock"]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3002",
+      "type": "string"
+    }
+  ]
+} 
